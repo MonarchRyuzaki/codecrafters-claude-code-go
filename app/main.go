@@ -42,6 +42,7 @@ func main() {
 					},
 				},
 			},
+			Tools: Tools,
 		},
 	)
 	if err != nil {
