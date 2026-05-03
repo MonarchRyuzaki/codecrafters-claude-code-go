@@ -62,8 +62,7 @@ func main() {
 		} else {
 			res = resp.Choices[0].Message.Content
 			fmt.Print(res)
+			break
 		}
-
-		// TODO: Uncomment the line below to pass the first stage
 	}
 }
