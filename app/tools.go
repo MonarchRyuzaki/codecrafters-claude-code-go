@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 
 	"github.com/openai/openai-go/v3"
 )
@@ -42,6 +43,20 @@ var Tools = []openai.ChatCompletionToolUnionParam{
 			"required": []string{"file_path", "content"},
 		},
 	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "Bash",
+		Description: openai.String("Execute a shell command"),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"command": map[string]any{
+					"type":        "string",
+					"description": "The command to execute",
+				},
+			},
+			"required": []string{"command"},
+		},
+	}),
 }
 
 type ToolHandler func(args string) string
@@ -49,6 +64,7 @@ type ToolHandler func(args string) string
 var toolHandlers = map[string]ToolHandler{
 	"Read":  handleReadTool,
 	"Write": handleWriteTool,
+	"Bash":  handleBashTool,
 }
 
 func handleToolCall(toolCalls []openai.ChatCompletionMessageToolCallUnion, messages []openai.ChatCompletionMessageParamUnion) []openai.ChatCompletionMessageParamUnion {
@@ -94,4 +110,28 @@ func handleWriteTool(args string) string {
 		return "Error writing file: " + err.Error()
 	}
 	return "File written successfully"
+}
+
+func handleBashTool(args string) string {
+	var parsedArgs map[string]string
+	err := json.Unmarshal([]byte(args), &parsedArgs)
+	if err != nil {
+		return "Error parsing args"
+	}
+	command, ok := parsedArgs["command"]
+	if !ok {
+		return "Missing required argument: command"
+	}
+	
+	cmd := exec.Command("sh", "-c", command)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output) + "\nError: " + err.Error()
+	}
+	
+	if len(output) == 0 {
+		return "Command executed successfully with no output"
+	}
+	
+	return string(output)
 }
