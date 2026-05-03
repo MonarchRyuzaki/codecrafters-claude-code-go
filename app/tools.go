@@ -24,12 +24,31 @@ var Tools = []openai.ChatCompletionToolUnionParam{
 			"required": []string{"file_path"},
 		},
 	}),
+	openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "Write",
+		Description: openai.String("Write content to a file"),
+		Parameters: openai.FunctionParameters{
+			"type": "object",
+			"properties": map[string]any{
+				"file_path": map[string]any{
+					"type":        "string",
+					"description": "The path of the file to write to",
+				},
+				"content": map[string]any{
+					"type":        "string",
+					"description": "The content to write to the file",
+				},
+			},
+			"required": []string{"file_path", "content"},
+		},
+	}),
 }
 
 type ToolHandler func(args string) string
 
 var toolHandlers = map[string]ToolHandler{
-	"Read": handleReadTool,
+	"Read":  handleReadTool,
+	"Write": handleWriteTool,
 }
 
 func handleToolCall(toolCalls []openai.ChatCompletionMessageToolCallUnion, messages []openai.ChatCompletionMessageParamUnion) []openai.ChatCompletionMessageParamUnion {
@@ -57,4 +76,22 @@ func handleReadTool(args string) string {
 		return ""
 	}
 	return string(content)
+}
+
+func handleWriteTool(args string) string {
+	var parsedArgs map[string]string
+	err := json.Unmarshal([]byte(args), &parsedArgs)
+	if err != nil {
+		return "Error parsing args"
+	}
+	filePath, okPath := parsedArgs["file_path"]
+	content, okContent := parsedArgs["content"]
+	if !okPath || !okContent {
+		return "Missing required arguments"
+	}
+	err = os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		return "Error writing file: " + err.Error()
+	}
+	return "File written successfully"
 }
