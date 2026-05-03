@@ -32,15 +32,17 @@ var toolHandlers = map[string]ToolHandler{
 	"Read": handleReadTool,
 }
 
-func handleToolCall(toolCalls []openai.ChatCompletionMessageToolCallUnion) string {
+func handleToolCall(toolCalls []openai.ChatCompletionMessageToolCallUnion, messages []openai.ChatCompletionMessageParamUnion) []openai.ChatCompletionMessageParamUnion {
 	if len(toolCalls) == 0 {
-		return ""
+		return messages
 	}
-	tc := toolCalls[0]
-	if handler, exists := toolHandlers[tc.Function.Name]; exists {
-		return handler(tc.Function.Arguments)
+	for _, tc := range toolCalls {
+		if handler, exists := toolHandlers[tc.Function.Name]; exists {
+			content := handler(tc.Function.Arguments)
+			messages = append(messages, openai.ToolMessage(content, tc.ID))
+		}
 	}
-	return ""
+	return messages
 }
 
 func handleReadTool(args string) string {

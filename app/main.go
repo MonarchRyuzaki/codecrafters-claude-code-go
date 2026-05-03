@@ -29,41 +29,41 @@ func main() {
 		panic("Env variable OPENROUTER_API_KEY not found")
 	}
 
-	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
-	resp, err := client.Chat.Completions.New(context.Background(),
-		openai.ChatCompletionNewParams{
-			Model: "anthropic/claude-haiku-4.5",
-			Messages: []openai.ChatCompletionMessageParamUnion{
-				{
-					OfUser: &openai.ChatCompletionUserMessageParam{
-						Content: openai.ChatCompletionUserMessageParamContentUnion{
-							OfString: openai.String(prompt),
-						},
-					},
-				},
+	messages := []openai.ChatCompletionMessageParamUnion{
+		openai.UserMessage(prompt),
+	}
+
+	for {
+		client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
+		resp, err := client.Chat.Completions.New(context.Background(),
+			openai.ChatCompletionNewParams{
+				Model:    "anthropic/claude-haiku-4.5",
+				Messages: messages,
+				Tools:    Tools,
 			},
-			Tools: Tools,
-		},
-	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if len(resp.Choices) == 0 {
+			panic("No choices in response")
+		}
+
+		// You can use print statements as follows for debugging, they'll be visible when running tests.
+		fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
+
+		res := ""
+
+		messages = append(messages, resp.Choices[0].Message.ToParam())
+
+		if len(resp.Choices[0].Message.ToolCalls) != 0 {
+			messages = handleToolCall(resp.Choices[0].Message.ToolCalls, messages)
+		} else {
+			res = resp.Choices[0].Message.Content
+			fmt.Print(res)
+		}
+
+		// TODO: Uncomment the line below to pass the first stage
 	}
-	if len(resp.Choices) == 0 {
-		panic("No choices in response")
-	}
-
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
-
-	res := ""
-
-	if len(resp.Choices[0].Message.ToolCalls) != 0 {
-		res = handleToolCall(resp.Choices[0].Message.ToolCalls)
-	} else {
-		res = resp.Choices[0].Message.Content
-	}
-
-	// TODO: Uncomment the line below to pass the first stage
-	fmt.Print(res)
 }
