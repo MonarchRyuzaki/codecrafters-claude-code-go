@@ -56,6 +56,14 @@ func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
+	res := ""
+
+	if len(resp.Choices[0].Message.ToolCalls) != 0 {
+		res = handleToolCall(resp.Choices[0].Message.ToolCalls)
+	} else {
+		res = resp.Choices[0].Message.Content
+	}
+
 	// TODO: Uncomment the line below to pass the first stage
-	fmt.Print(resp.Choices[0].Message.Content)
+	fmt.Print(res)
 }
